@@ -1,7 +1,9 @@
 package main
 
 import (
+	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
 
 	ds "github.com/ipfs/go-ipfs/Godeps/_workspace/src/github.com/ipfs/go-datastore"
@@ -23,17 +25,47 @@ func fail(i interface{}) {
 }
 
 func main() {
+	key := flag.String("keyfile", "", "specify file containing ipfs private key")
+	flag.Parse()
+
+	var priv ci.PrivKey
+	var pub ci.PubKey
+	var local peer.ID
+
+	if *key != "" {
+		data, err := ioutil.ReadFile(*key)
+		if err != nil {
+			fail(err)
+		}
+
+		fpriv, err := ci.UnmarshalPrivateKey(data)
+		if err != nil {
+			fail(err)
+		}
+
+		fpub := priv.GetPublic()
+		fid, err := peer.IDFromPublicKey(fpub)
+		if err != nil {
+			fail(err)
+		}
+
+		priv = fpriv
+		pub = fpub
+		local = fid
+	} else {
+		var err error
+		priv, pub, err = ci.GenerateKeyPair(ci.RSA, 2048)
+		if err != nil {
+			fail(err)
+		}
+
+		local, err = peer.IDFromPublicKey(pub)
+		if err != nil {
+			fail(err)
+		}
+	}
+
 	a, err := ma.NewMultiaddr("/ip4/127.0.0.1/tcp/7000")
-	if err != nil {
-		fail(err)
-	}
-
-	priv, pub, err := ci.GenerateKeyPair(ci.RSA, 2048)
-	if err != nil {
-		fail(err)
-	}
-
-	local, err := peer.IDFromPublicKey(pub)
 	if err != nil {
 		fail(err)
 	}
